@@ -1,0 +1,7 @@
+{
+  "id": "paseo-github-prs",
+  "name": "GitHub PRs",
+  "requirements": {
+    "paseo": ">=0.13.2"
+  }
+}
