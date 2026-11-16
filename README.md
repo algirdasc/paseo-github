@@ -7,7 +7,7 @@ A [Paseo](https://paseo.sh) plugin that puts your GitHub pull requests in the si
 - **Saved views from GitHub search queries.** The defaults are **Mine** (`is:pr is:open author:@me`) and **Review requests** (`is:pr review-requested:@me state:open archived:false sort:updated-desc`). Add your own with any query [GitHub search](https://docs.github.com/search-github/searching-on-github/searching-issues-and-pull-requests) supports; long-press a view chip or use Edit to change or remove it. Views persist on the host and sync across connected clients.
 - **List with status.** Each row shows state (open, merged, closed, draft), review decision (Approved, Changes requested, Review required), and a CI check summary (`✓ passed`, `✗ failed`, `● pending`).
 - **Detail panel.** Description, per-check results, reviews, comments, and per-file diffs with colored patches. Markdown bodies render with Paseo's own Markdown.
-- **Actions.** Approve, merge (falls back to squash or rebase when the repo forbids merge commits), open on GitHub, and send the PR to a new workspace chat: the plugin finds the Paseo project whose git remote matches the repository, cuts a worktree, and starts a review agent with your default provider and model.
+- **Actions.** Approve, merge (falls back to squash or rebase when the repo forbids merge commits, with an optional branch-protection bypass for repo admins), open on GitHub, and send the PR to a new workspace chat: the plugin finds the Paseo project whose git remote matches the repository, cuts a worktree, and starts a review agent with your default provider and model.
 - **Pagination and caching.** 50 PRs per page with Load more; each view is cached for 10 minutes and Refresh forces a refetch.
 
 ## Requirements

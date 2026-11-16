@@ -116,7 +116,11 @@ export const approvePr = defineRpc({
 
 export const mergePr = defineRpc({
   name: "prs.merge",
-  input: z.object({ repo: z.string().regex(/^[^/]+\/[^/]+$/), number: z.number().int().positive() }),
+  input: z.object({
+    repo: z.string().regex(/^[^/]+\/[^/]+$/),
+    number: z.number().int().positive(),
+    admin: z.boolean().default(false),
+  }),
   output: z.object({ strategy: z.string() }),
 });
 
