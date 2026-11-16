@@ -3,5 +3,6 @@
   "name": "GitHub PRs",
   "requirements": {
     "paseo": ">=0.13.2"
-  }
+  },
+  "description": "GitHub pull requests in the sidebar with filtered views, CI and review status, diffs, approve/merge, and send-to-chat"
 }

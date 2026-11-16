@@ -225,6 +225,7 @@ export function DetailPanel({
                     borderLeftWidth: 1,
                     borderLeftColor: theme.colors.accentForeground,
                     paddingHorizontal: 8,
+                    cursor: "pointer",
                   },
                 ]}
               >
@@ -238,6 +239,7 @@ export function DetailPanel({
                   top: "100%",
                   right: 0,
                   marginTop: 4,
+                  minWidth: 190,
                   borderWidth: 1,
                   borderColor: theme.colors.border,
                   borderRadius: 8,
@@ -248,7 +250,13 @@ export function DetailPanel({
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => runMerge(true)}
-                  style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                  style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => ({
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    backgroundColor: hovered || pressed ? theme.colors.surface2 : undefined,
+                    cursor: "pointer",
+                  })}
                 >
                   <Text style={{ color: theme.colors.statusDanger, fontSize: 13 }}>Merge bypassing rules</Text>
                 </Pressable>
@@ -348,6 +356,14 @@ export function DetailPanel({
             ) : null}
           </Section>
         </>
+      ) : null}
+
+      {mergeMenuOpen ? (
+        <Pressable
+          accessibilityLabel="Dismiss merge menu"
+          onPress={() => setMergeMenuOpen(false)}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 }}
+        />
       ) : null}
     </ScrollView>
   );
