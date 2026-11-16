@@ -71,6 +71,7 @@ export function DetailPanel({
   const [details, setDetails] = useState<PrDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [mergeMenuOpen, setMergeMenuOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -97,6 +98,18 @@ export function DetailPanel({
     } finally {
       setBusy(null);
     }
+  };
+
+  const runMerge = (admin: boolean) => {
+    setMergeMenuOpen(false);
+    void runAction(
+      "merge",
+      async () => {
+        const { strategy } = await merge({ repo: pr.repo, number: pr.number, admin });
+        return `Merged (${strategy}${admin ? ", bypassed rules" : ""})`;
+      },
+      onMerged,
+    );
   };
 
   const button = {
@@ -177,46 +190,71 @@ export function DetailPanel({
           </Pressable>
         ) : null}
         {open && !pr.isDraft ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy !== null}
-            onPress={() =>
-              void runAction(
-                "merge",
-                async () => {
-                  const { strategy } = await merge({ repo: pr.repo, number: pr.number });
-                  return `Merged (${strategy})`;
-                },
-                onMerged,
-              )
-            }
-            style={[button, { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }]}
-          >
-            <Text style={{ color: theme.colors.accentForeground, fontSize: 13 }}>
-              {busy === "merge" ? "Merging…" : "Merge"}
-            </Text>
-          </Pressable>
-        ) : null}
-        {open && !pr.isDraft ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy !== null}
-            onPress={() =>
-              void runAction(
-                "merge-admin",
-                async () => {
-                  const { strategy } = await merge({ repo: pr.repo, number: pr.number, admin: true });
-                  return `Merged (${strategy}, bypassed rules)`;
-                },
-                onMerged,
-              )
-            }
-            style={[button, { borderColor: theme.colors.statusDanger }]}
-          >
-            <Text style={{ color: theme.colors.statusDanger, fontSize: 13 }}>
-              {busy === "merge-admin" ? "Merging…" : "Merge bypassing rules"}
-            </Text>
-          </Pressable>
+          <View style={{ position: "relative" }}>
+            <View style={{ flexDirection: "row" }}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy !== null}
+                onPress={() => runMerge(false)}
+                style={[
+                  button,
+                  {
+                    backgroundColor: theme.colors.accent,
+                    borderColor: theme.colors.accent,
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                  },
+                ]}
+              >
+                <Text style={{ color: theme.colors.accentForeground, fontSize: 13 }}>
+                  {busy === "merge" ? "Merging…" : "Merge"}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="More merge options"
+                disabled={busy !== null}
+                onPress={() => setMergeMenuOpen((value) => !value)}
+                style={[
+                  button,
+                  {
+                    backgroundColor: theme.colors.accent,
+                    borderColor: theme.colors.accent,
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeftWidth: 1,
+                    borderLeftColor: theme.colors.accentForeground,
+                    paddingHorizontal: 8,
+                  },
+                ]}
+              >
+                <Text style={{ color: theme.colors.accentForeground, fontSize: 13 }}>▾</Text>
+              </Pressable>
+            </View>
+            {mergeMenuOpen ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: 4,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  borderRadius: 8,
+                  backgroundColor: theme.colors.surface1,
+                  zIndex: 10,
+                }}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => runMerge(true)}
+                  style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: theme.colors.statusDanger, fontSize: 13 }}>Merge bypassing rules</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         ) : null}
       </View>
 
