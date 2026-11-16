@@ -10,10 +10,16 @@ export function relativeTime(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-export function stateColor(state: PullRequest["state"], theme: PluginTheme): string {
-  if (state === "open") return theme.colors.statusSuccess;
-  if (state === "merged") return theme.colors.accent;
-  return theme.colors.foregroundMuted;
+const GITHUB_STATE_COLORS: Record<PullRequest["state"], string> = {
+  open: "#1a7f37",
+  merged: "#8250df",
+  closed: "#cf222e",
+};
+
+// shortcut: one palette for both color schemes (GitHub's light-mode values); if the dots
+// look dim on a dark theme, branch on surface0 luminance for the #3fb950/#a371f7/#f85149 set.
+export function stateColor(state: PullRequest["state"]): string {
+  return GITHUB_STATE_COLORS[state];
 }
 
 export function reviewDecisionLabel(decision: ReviewDecision | null): string | null {

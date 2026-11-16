@@ -54,12 +54,14 @@ export function DetailPanel({
   compact,
   onBack,
   onChanged,
+  onMerged,
 }: {
   pr: PullRequest;
   theme: PluginTheme;
   compact: boolean;
   onBack: () => void;
   onChanged: () => void;
+  onMerged: () => void;
 }) {
   const toast = useToast();
   const loadDetails = useRpc(prDetails);
@@ -84,12 +86,12 @@ export function DetailPanel({
     void refresh();
   }, [refresh]);
 
-  const runAction = async (name: string, action: () => Promise<string>) => {
+  const runAction = async (name: string, action: () => Promise<string>, notify: () => void = onChanged) => {
     setBusy(name);
     try {
       toast.show(await action(), { variant: "success" });
       await refresh();
-      onChanged();
+      notify();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -115,7 +117,7 @@ export function DetailPanel({
             <Text style={{ color: theme.colors.accent, fontSize: 14 }}>‹ Back</Text>
           </Pressable>
         ) : null}
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stateColor(pr.state, theme) }} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stateColor(pr.state) }} />
         <Text style={{ color: theme.colors.foregroundMuted, fontSize: 13 }}>
           {pr.repo}#{pr.number}
         </Text>
@@ -179,10 +181,14 @@ export function DetailPanel({
             accessibilityRole="button"
             disabled={busy !== null}
             onPress={() =>
-              void runAction("merge", async () => {
-                const { strategy } = await merge({ repo: pr.repo, number: pr.number });
-                return `Merged (${strategy})`;
-              })
+              void runAction(
+                "merge",
+                async () => {
+                  const { strategy } = await merge({ repo: pr.repo, number: pr.number });
+                  return `Merged (${strategy})`;
+                },
+                onMerged,
+              )
             }
             style={[button, { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }]}
           >
