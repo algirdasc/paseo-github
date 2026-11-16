@@ -1,7 +1,7 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import { useRpc, useSettings, type PluginScreenProps } from "@getpaseo/plugin/client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { searchPrs, viewsSettings, type PullRequest, type SavedView } from "../shared/prs";
 import { DetailPanel } from "./detail";
 import { checkOutcomeColor, relativeTime, reviewDecisionColor, reviewDecisionLabel, stateColor } from "./format";
@@ -93,19 +93,23 @@ function PrRow({
   pr,
   theme,
   active,
+  locked,
   onPress,
 }: {
   pr: PullRequest;
   theme: PluginTheme;
   active: boolean;
+  locked: boolean;
   onPress: () => void;
 }) {
   const decision = reviewDecisionLabel(pr.reviewDecision);
+  const color = stateColor(pr.state);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${pr.repo}#${pr.number} ${pr.title}`}
       onPress={onPress}
+      disabled={locked}
       style={{
         flexDirection: "row",
         gap: 10,
@@ -114,24 +118,17 @@ function PrRow({
         borderRadius: 6,
         backgroundColor: active ? theme.colors.surface1 : undefined,
         alignItems: "flex-start",
+        opacity: locked ? 0.5 : 1,
       }}
     >
-      <View
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          marginTop: 6,
-          backgroundColor: stateColor(pr.state, theme),
-        }}
-      />
+      <View style={{ width: 8, height: 8, borderRadius: 4, marginTop: 6, backgroundColor: color }} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: theme.colors.foreground, fontSize: 14 }}>
           <Text style={{ color: theme.colors.foregroundMuted }}>#{pr.number}</Text> {pr.title}
           {pr.isDraft ? <Text style={{ color: theme.colors.foregroundMuted }}> (draft)</Text> : null}
         </Text>
         <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>
-          {pr.repo} · {pr.author} · {pr.state} · {relativeTime(pr.updatedAt)}
+          {pr.repo} · {pr.author} · {relativeTime(pr.updatedAt)}{locked ? " · merging…" : ""}
           {decision ? (
             <Text>
               <Text> · </Text>
@@ -169,12 +166,35 @@ export function PrsScreen({ theme, layout }: PluginScreenProps) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedPr, setSelectedPr] = useState<PullRequest | null>(null);
+  const mergingRef = useRef(new Set<string>());
+  const [mergingKeys, setMergingKeys] = useState<ReadonlySet<string>>(new Set());
 
   const views = settings.status === "ready" ? settings.values.views : [];
   const selected: SavedView | null = views.find((view) => view.id === selectedId) ?? views[0] ?? null;
 
   const viewCache = useRef(new Map<string, { prs: PullRequest[]; total: number; fetchedAt: number }>());
   const requestSeq = useRef(0);
+
+  const splitRef = useRef(0.4);
+  const [split, setSplitState] = useState(splitRef.current);
+  const splitContainerWidth = useRef(0);
+  const dragStart = useRef({ pageX: 0, split: splitRef.current });
+  const splitPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (event) => {
+        dragStart.current = { pageX: event.nativeEvent.pageX, split: splitRef.current };
+      },
+      onPanResponderMove: (event) => {
+        const width = splitContainerWidth.current;
+        if (width <= 0) return;
+        const next = dragStart.current.split + (event.nativeEvent.pageX - dragStart.current.pageX) / width;
+        const clamped = Math.min(0.7, Math.max(0.25, next));
+        splitRef.current = clamped;
+        setSplitState(clamped);
+      },
+    }),
+  ).current;
 
   const refresh = useCallback(
     async (key: string, query: string, force = false) => {
@@ -198,11 +218,17 @@ export function PrsScreen({ theme, layout }: PluginScreenProps) {
       try {
         const page = await search({ query, page: 1 });
         if (seq !== requestSeq.current) return;
-        viewCache.current.set(key, { prs: page.prs, total: page.total, fetchedAt: Date.now() });
-        setPrs(page.prs);
-        setTotal(page.total);
+        // GitHub's search index lags a merge by a few seconds, so a just-merged PR can still
+        // come back from an is:open query; drop rows locked by their post-merge refresh.
+        const visible = mergingRef.current.size
+          ? page.prs.filter((pr) => !mergingRef.current.has(prKey(pr)))
+          : page.prs;
+        const visibleTotal = page.total - (page.prs.length - visible.length);
+        viewCache.current.set(key, { prs: visible, total: visibleTotal, fetchedAt: Date.now() });
+        setPrs(visible);
+        setTotal(visibleTotal);
         setSelectedPr((current) =>
-          current ? (page.prs.find((pr) => prKey(pr) === prKey(current)) ?? current) : null,
+          current ? (visible.find((pr) => prKey(pr) === prKey(current)) ?? current) : null,
         );
       } catch (cause) {
         if (seq !== requestSeq.current) return;
@@ -213,6 +239,20 @@ export function PrsScreen({ theme, layout }: PluginScreenProps) {
       }
     },
     [search],
+  );
+
+  const markMerged = useCallback(
+    (pr: PullRequest) => {
+      if (!selected) return;
+      const key = prKey(pr);
+      mergingRef.current.add(key);
+      setMergingKeys(new Set(mergingRef.current));
+      void refresh(`${selected.id}:${selected.query}`, selected.query, true).finally(() => {
+        mergingRef.current.delete(key);
+        setMergingKeys(new Set(mergingRef.current));
+      });
+    },
+    [selected, refresh],
   );
 
   const loadMore = async () => {
@@ -340,6 +380,7 @@ export function PrsScreen({ theme, layout }: PluginScreenProps) {
                   pr={pr}
                   theme={theme}
                   active={selectedPr !== null && prKey(selectedPr) === prKey(pr)}
+                  locked={mergingKeys.has(prKey(pr))}
                   onPress={() => setSelectedPr(pr)}
                 />
               ))}
@@ -416,27 +457,47 @@ export function PrsScreen({ theme, layout }: PluginScreenProps) {
 
       {layout.compact && selectedPr ? (
         <DetailPanel
+          key={prKey(selectedPr)}
           pr={selectedPr}
           theme={theme}
           compact
           onBack={() => setSelectedPr(null)}
           onChanged={() => selected && void refresh(`${selected.id}:${selected.query}`, selected.query, true)}
+          onMerged={() => markMerged(selectedPr)}
         />
       ) : layout.compact ? (
         list
       ) : (
-        <View style={{ flex: 1, flexDirection: "row", borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-          <View style={{ flex: 2, minWidth: 280 }}>{list}</View>
+        <View
+          style={{ flex: 1, flexDirection: "row", borderTopWidth: 1, borderTopColor: theme.colors.border }}
+          onLayout={(event) => {
+            splitContainerWidth.current = event.nativeEvent.layout.width;
+          }}
+        >
+          <View style={{ flex: split, minWidth: 280 }}>{list}</View>
           {selectedPr ? (
-            <View style={{ flex: 3, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
-              <DetailPanel
-                pr={selectedPr}
-                theme={theme}
-                compact={false}
-                onBack={() => setSelectedPr(null)}
-                onChanged={() => selected && void refresh(`${selected.id}:${selected.query}`, selected.query, true)}
-              />
-            </View>
+            <>
+              <View
+                {...splitPan.panHandlers}
+                accessibilityRole="adjustable"
+                accessibilityLabel="Resize pull request panel"
+                // RN types only allow auto|pointer, but on web any CSS cursor value works.
+                style={{ width: 10, alignItems: "center", justifyContent: "center", cursor: "col-resize" as "auto" }}
+              >
+                <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: theme.colors.border }} />
+              </View>
+              <View style={{ flex: 1 - split, borderLeftWidth: 1, borderLeftColor: theme.colors.border }}>
+                <DetailPanel
+                  key={prKey(selectedPr)}
+                  pr={selectedPr}
+                  theme={theme}
+                  compact={false}
+                  onBack={() => setSelectedPr(null)}
+                  onChanged={() => selected && void refresh(`${selected.id}:${selected.query}`, selected.query, true)}
+                  onMerged={() => markMerged(selectedPr)}
+                />
+              </View>
+            </>
           ) : null}
         </View>
       )}
