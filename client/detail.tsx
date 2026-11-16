@@ -197,6 +197,27 @@ export function DetailPanel({
             </Text>
           </Pressable>
         ) : null}
+        {open && !pr.isDraft ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy !== null}
+            onPress={() =>
+              void runAction(
+                "merge-admin",
+                async () => {
+                  const { strategy } = await merge({ repo: pr.repo, number: pr.number, admin: true });
+                  return `Merged (${strategy}, bypassed rules)`;
+                },
+                onMerged,
+              )
+            }
+            style={[button, { borderColor: theme.colors.statusDanger }]}
+          >
+            <Text style={{ color: theme.colors.statusDanger, fontSize: 13 }}>
+              {busy === "merge-admin" ? "Merging…" : "Merge bypassing rules"}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {error ? <Text style={{ color: theme.colors.statusDanger }}>{error}</Text> : null}

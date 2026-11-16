@@ -45,7 +45,7 @@ Data flow: client component → `useRpc(contract)` → shared `defineRpc` (zod i
 - **GitHub's search index lags a merge by seconds.** `prs-screen.tsx` tracks `mergingKeys`: on merge the row locks, a forced refresh runs, and the merged PR is filtered out of that refresh. Keep this when touching the refresh path.
 - **Checks permission**: a token without the Checks permission fails the whole `statusCheckRollup` GraphQL field — `enrich` degrades to no badges rather than erroring. Preserve that.
 - **List state**: per-view 10-minute cache (`viewCache`) and `requestSeq` for stale-request invalidation; forced refreshes keep showing the old list while reloading.
-- **Merge fallback** tries `--merge` → `--squash` → `--rebase`, retrying only on "method not allowed" errors. Don't collapse it into one strategy.
+- **Merge fallback** tries `--merge` → `--squash` → `--rebase`, retrying only on "method not allowed" errors. Don't collapse it into one strategy. `admin: true` on the RPC appends `--admin` to bypass branch protection.
 
 ## Deeper reference
 

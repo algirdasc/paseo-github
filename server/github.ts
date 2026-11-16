@@ -207,15 +207,17 @@ export async function approvePullRequest({ repo, number }: { repo: string; numbe
 export async function mergePullRequest({
   repo,
   number,
+  admin = false,
 }: {
   repo: string;
   number: number;
+  admin?: boolean;
 }): Promise<{ strategy: string }> {
   const url = `https://github.com/${repo}/pull/${number}`;
   let lastError: unknown;
   for (const flag of ["--merge", "--squash", "--rebase"]) {
     try {
-      await gh(["pr", "merge", url, flag]);
+      await gh(["pr", "merge", url, flag, ...(admin ? ["--admin"] : [])]);
       return { strategy: flag.slice(2) };
     } catch (error) {
       lastError = error;
