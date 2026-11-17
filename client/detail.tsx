@@ -7,7 +7,9 @@ import {
   approvePr,
   mergePr,
   prDetails,
+  readyPr,
   sendPrToChat,
+  updateBranchPr,
   type PrDetails,
   type PullRequest,
 } from "../shared/prs";
@@ -67,6 +69,8 @@ export function DetailPanel({
   const loadDetails = useRpc(prDetails);
   const approve = useRpc(approvePr);
   const merge = useRpc(mergePr);
+  const markReady = useRpc(readyPr);
+  const updateBranch = useRpc(updateBranchPr);
   const sendToChat = useRpc(sendPrToChat);
   const [details, setDetails] = useState<PrDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +140,11 @@ export function DetailPanel({
         </Text>
       </View>
       <Text style={{ color: theme.colors.foreground, fontSize: 17, fontWeight: "600" }}>{pr.title}</Text>
+      {details ? (
+        <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12, fontFamily: MONOSPACE }}>
+          {details.headRef} → {details.baseRef}
+        </Text>
+      ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>
           {pr.author} · {pr.state}
@@ -187,6 +196,40 @@ export function DetailPanel({
           >
             <Text style={{ color: theme.colors.statusSuccess, fontSize: 13 }}>
               {busy === "approve" ? "Approving…" : "Approve"}
+            </Text>
+          </Pressable>
+        ) : null}
+        {open && pr.isDraft ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy !== null}
+            onPress={() =>
+              void runAction("ready", async () => {
+                await markReady({ repo: pr.repo, number: pr.number });
+                return "Marked as ready for review";
+              })
+            }
+            style={[button, { borderColor: theme.colors.statusSuccess }]}
+          >
+            <Text style={{ color: theme.colors.statusSuccess, fontSize: 13 }}>
+              {busy === "ready" ? "Marking…" : "Mark as ready"}
+            </Text>
+          </Pressable>
+        ) : null}
+        {open && !pr.isDraft && details?.branchBehind ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy !== null}
+            onPress={() =>
+              void runAction("update", async () => {
+                await updateBranch({ repo: pr.repo, number: pr.number });
+                return "Branch updated";
+              })
+            }
+            style={[button, { backgroundColor: theme.colors.surface1 }]}
+          >
+            <Text style={{ color: theme.colors.foreground, fontSize: 13 }}>
+              {busy === "update" ? "Updating…" : "Update branch"}
             </Text>
           </Pressable>
         ) : null}

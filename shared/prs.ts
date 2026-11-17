@@ -104,6 +104,7 @@ export const prDetails = defineRpc({
     comments: z.array(commentItem),
     files: z.array(fileItem),
     truncatedFiles: z.boolean(),
+    branchBehind: z.boolean(),
   }),
 });
 export type PrDetails = z.output<typeof prDetails.output>;
@@ -122,6 +123,18 @@ export const mergePr = defineRpc({
     admin: z.boolean().default(false),
   }),
   output: z.object({ strategy: z.string() }),
+});
+
+export const readyPr = defineRpc({
+  name: "prs.ready",
+  input: z.object({ repo: z.string().regex(/^[^/]+\/[^/]+$/), number: z.number().int().positive() }),
+  output: z.object({}),
+});
+
+export const updateBranchPr = defineRpc({
+  name: "prs.update-branch",
+  input: z.object({ repo: z.string().regex(/^[^/]+\/[^/]+$/), number: z.number().int().positive() }),
+  output: z.object({}),
 });
 
 export const sendPrToChat = defineRpc({
