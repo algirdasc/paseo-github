@@ -149,7 +149,8 @@ export function DetailPanel({
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {/* zIndex keeps the merge menu above the click-away overlay; zIndex only reorders siblings */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, zIndex: 10 }}>
         <Pressable
           accessibilityRole="button"
           onPress={() => void openExternalUrl(pr.url)}
