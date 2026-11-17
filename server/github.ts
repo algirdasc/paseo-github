@@ -152,6 +152,7 @@ export async function loadPrDetails({ repo, number }: { repo: string; number: nu
     head?: { ref?: string };
     additions?: number;
     deletions?: number;
+    mergeable_state?: string;
   };
   const [reviewsRaw, commentsRaw, filesRaw, enrichment] = await Promise.all([
     gh(["api", "-X", "GET", `repos/${repo}/pulls/${number}/reviews`, "-f", "per_page=100"]).then(JSON.parse),
@@ -196,11 +197,24 @@ export async function loadPrDetails({ repo, number }: { repo: string; number: nu
     })),
     files,
     truncatedFiles: files.length === 100,
+    // "behind" is the state where GitHub offers "Update branch"; "unknown" means GitHub
+    // is still recomputing after a push, so the button hides until the next refresh.
+    branchBehind: pr.mergeable_state === "behind",
   };
 }
 
 export async function approvePullRequest({ repo, number }: { repo: string; number: number }): Promise<{}> {
   await gh(["pr", "review", `https://github.com/${repo}/pull/${number}`, "--approve"]);
+  return {};
+}
+
+export async function markPullRequestReady({ repo, number }: { repo: string; number: number }): Promise<{}> {
+  await gh(["pr", "ready", `https://github.com/${repo}/pull/${number}`]);
+  return {};
+}
+
+export async function updatePullRequestBranch({ repo, number }: { repo: string; number: number }): Promise<{}> {
+  await gh(["pr", "update-branch", `https://github.com/${repo}/pull/${number}`]);
   return {};
 }
 
